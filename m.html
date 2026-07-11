@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magischer Märchen-Baukasten</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <!-- Confetti Script -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'fairy': ['Cinzel', 'serif'],
+                        'story': ['Lora', 'serif'],
+                    },
+                    colors: {
+                        parchment: '#fdfbf7',
+                        magic: '#8b5cf6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f4f1ea;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23dcd7cb' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .story-card {
+            background: #fffdf8;
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1);
+            border: 1px solid #e5e0d3;
+        }
+        input:focus {
+            transform: translateY(-2px);
+        }
+        /* Initialbuchstabe für Märchen-Look */
+        .story-text p:first-of-type::first-letter {
+            float: left;
+            font-family: 'Cinzel', serif;
+            font-size: 4rem;
+            line-height: 3.5rem;
+            padding-right: 8px;
+            color: #4338ca;
+        }
+    </style>
+</head>
+<body class="min-h-screen py-10 px-4 text-slate-800 font-story">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-fairy text-indigo-900 mb-2 tracking-wide italic">Magischer Märchen-Baukasten</h1>
+            <p class="text-slate-600 italic">Schöpfe aus dem Vollen und webe ein Epos nach alter Sitte...</p>
+        </header>
+
+        <!-- Formular Bereich -->
+        <main class="story-card rounded-2xl p-6 md:p-10 mb-10 border-t-8 border-indigo-600">
+            <form id="maerchenForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="fieldsGrid">
+                    <!-- Felder werden per JS eingefügt -->
+                </div>
+
+                <div class="mt-12 flex flex-wrap justify-center gap-4">
+                    <button type="button" id="randomBtn" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-fairy text-lg py-4 px-8 rounded-full shadow-md transition-all active:scale-95 border border-amber-200">
+                        Zufallswerte ✨
+                    </button>
+                    
+                    <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white font-fairy text-lg py-4 px-12 rounded-full shadow-lg transition-all active:scale-95 focus:ring-4 focus:ring-indigo-200">
+                        Das Märchen beschwören 🪄
+                    </button>
+                </div>
+            </form>
+        </main>
+
+        <!-- Das Ergebnis -->
+        <section id="resultSection" class="hidden opacity-0 transform translate-y-10 transition-all duration-700">
+            <div class="story-card rounded-2xl p-8 md:p-14 relative overflow-hidden">
+                <!-- Ornamentale Ecken -->
+                <div class="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-indigo-100 m-4"></div>
+                <div class="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-indigo-100 m-4"></div>
+                
+                <h2 id="storyTitle" class="text-3xl md:text-4xl font-fairy text-center text-indigo-950 mb-10 leading-tight"></h2>
+                
+                <article id="storyContent" class="story-text prose prose-indigo prose-lg mx-auto text-slate-700 space-y-6">
+                    <!-- Hier landet der Text -->
+                </article>
+
+                <div class="mt-12 text-center border-t border-slate-100 pt-8">
+                    <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="text-indigo-600 font-bold hover:underline">
+                        ↑ Zurück zum Anfang
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const config = [
+            { id: 'held', label: 'Der Held (Jüngster)', icon: '👑', samples: ["Dummling", "Hans", "Frieder", "Glückskind", "Bastian"] },
+            { id: 'bruder1', label: 'Ältester Bruder', icon: '👦', samples: ["Ulrich", "Ruprecht", "Gottfried", "Hasso", "Kunibert"] },
+            { id: 'bruder2', label: 'Zweiter Bruder', icon: '👦', samples: ["Guntram", "Adalbert", "Eberhard", "Volker", "Wolfram"] },
+            { id: 'ort', label: 'Ein ferner Ort', icon: '🏔️', samples: ["Hintertupfingen", "Wolkenkuckucksheim", "Schokofurt", "Grumpelwald", "Finsterkamm"] },
+            { id: 'mangel', label: 'Das Unglück', icon: '🏚️', samples: ["der Vater schwer erkrankte", "die Sonne nicht mehr schien", "das Korn auf den Feldern verdorrte", "die Brunnen versiegt waren", "ein Fluch das Schloss belegte"] },
+            { id: 'maennlein', label: 'Der magische Helfer', icon: '🧙', samples: ["ein graues Männlein", "eine uralte Vettel", "ein sprechender Rabe", "ein winziges Zwerglein", "ein silberner Hirsch"] },
+            { id: 'proviant', label: 'Karger Proviant', icon: '🥣', samples: ["einen trockenen Kanten Brot", "ein Krüglein saures Bier", "in Asche gebackenen Teig", "dünne Wassersuppe", "einen schimmligen Käse"] },
+            { id: 'zauberding', label: 'Das Zauberwerkzeug', icon: '🌂', samples: ["einen goldenen Schlüssel", "eine silberne Haselrute", "ein magisches Flötelein", "ein gläsernes Fläschchen", "eine Wunderblume"] },
+            { id: 'gefahr', label: 'Das große Hindernis', icon: '👾', samples: ["einem feuerspeienden Drachen", "einem eisernen Tor", "einem schlafenden Riesen", "einer tiefen Schlucht", "einem verwunschenen Schloss"] },
+            { id: 'zielobjekt', label: 'Das Ziel der Suche', icon: '💎', samples: ["das Wasser des Lebens", "die goldene Feder", "das Herz der Prinzessin", "den Beutel ohne Ende", "das Licht der Welt"] }
+        ];
+
+        const grid = document.getElementById('fieldsGrid');
+        config.forEach(f => {
+            grid.innerHTML += `
+                <div class="flex flex-col">
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 ml-1">
+                        ${f.icon} ${f.label}
+                    </label>
+                    <input type="text" id="${f.id}" required 
+                        class="bg-white border-2 border-slate-200 rounded-xl py-3 px-4 outline-none focus:border-indigo-500 transition-all shadow-sm"
+                        placeholder="Eingeben...">
+                </div>
+            `;
+        });
+
+        document.getElementById('randomBtn').onclick = () => {
+            config.forEach(f => {
+                const input = document.getElementById(f.id);
+                const randomVal = f.samples[Math.floor(Math.random() * f.samples.length)];
+                input.value = randomVal;
+                input.classList.add('bg-amber-50');
+                setTimeout(() => input.classList.remove('bg-amber-50'), 300);
+            });
+        };
+
+        document.getElementById('maerchenForm').onsubmit = (e) => {
+            e.preventDefault();
+            
+            const v = {};
+            config.forEach(f => {
+                const val = document.getElementById(f.id).value;
+                v[f.id] = `<span class="text-indigo-700 font-bold underline decoration-indigo-100 underline-offset-4">${val}</span>`;
+            });
+
+            document.getElementById('storyTitle').innerHTML = `Von ${v.held} und der Suche nach ${v.zielobjekt}`;
+            
+            document.getElementById('storyContent').innerHTML = `
+                <p>Es war einmal in uralten Zeiten, wo das Wünschen noch geholfen hat, da lebte am Rande des Landes ${v.ort} eine arme Familie. Es trug sich zu, dass ${v.mangel} und große Not ins Haus einzog. Da hieß es, dass nur ${v.zielobjekt} die Rettung bringen könne.</p>
+                
+                <p>Zuerst machte sich der Älteste, ${v.bruder1}, auf den Weg. Er hielt sich für überaus klug und nahm feine Speisen mit. Doch als er im Wald auf ${v.maennlein} traf, das ihn um einen Bissen bat, sprach er hochmütig: „Was ich dir gebe, das fehlt mir selbst! Pack dich deiner Wege!“ Darob ward das Wesen zornig und ließ ihn in die Irre gehen, dass er nimmermehr gesehen ward.</p>
+                
+                <p>Alsbald zog der zweite Sohn, ${v.bruder2}, aus, doch auch er war hartherzig gegen ${v.maennlein} und erlitt schmachvoll das gleiche Schicksal. Nun blieb nur noch ${v.held} übrig, den alle nur verspotteten und für töricht hielten.</p>
+                
+                <p>${v.held} aber sprach: „Vater, lasst mich ziehen.“ Er nahm nichts mit als ${v.proviant}. Als er im Tann ${v.maennlein} begegnete, teilte er sein weniges Hab und Gut von Herzen gern. Da sprach das Wesen: „Weil du ein gutes Herz hast, will ich dir Glück bescheren.“ Und es reichte ihm ${v.zauberding} und wies ihm den Pfad.</p>
+                
+                <p>Der Jüngling wanderte sieben Tage und Nächte, bis er vor ${v.gefahr} stand. Er besann sich auf den Rat des Männleins und nutzte geschwind ${v.zauberding}. Mit einem Mal geschah ein Wunder, das Hindernis wich zurück und der Pfad zu ${v.zielobjekt} lag frei vor ihm.</p>
+                
+                <p>Als ${v.held} mit der Beute heimkehrte, wich das Unheil sogleich aus dem Lande. Da ward aus dem Spott Ehre, und sie lebten fortan in Saus und Braus und herrlicher Freude. Und wenn sie nicht gestorben sind, dann leben sie noch heute.</p>
+            `;
+
+            const res = document.getElementById('resultSection');
+            res.classList.remove('hidden');
+            setTimeout(() => {
+                res.classList.remove('opacity-0', 'translate-y-10');
+                res.classList.add('opacity-100', 'translate-y-0');
+                res.scrollIntoView({ behavior: 'smooth' });
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            }, 100);
+        };
+    </script>
+</body>
+</html>
