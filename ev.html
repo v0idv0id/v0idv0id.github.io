@@ -30,12 +30,7 @@
 <body class="text-gray-800 min-h-screen flex flex-col items-center py-10 px-4">
 
     <!-- Header -->
-    <header class="w-full max-w-4xl text-center mb-8 fade-in">
-        <h1 class="text-2xl font-extrabold text-blue-600 drop-shadow-sm flex justify-center items-center gap-3">
-            <i class="fas fa-graduation-cap"></i> Vokabeltrainer
-        </h1>
-    </header>
-
+    
     <!-- Main Container -->
     <main class="w-full max-w-4xl glass-panel rounded-2xl shadow-xl overflow-hidden relative min-h-[600px] flex flex-col fade-in">
         
@@ -142,8 +137,11 @@
                         <button onclick="loadDefaultVocabs()" class="text-xs text-blue-600 hover:underline mt-3 block w-full text-center">
                             Oder Standard-Vokabeln laden (Demo)
                         </button>
-                        <button onclick="loadVocabsFromUrl()" class="text-xs text-blue-600 hover:underline mt-1 block w-full text-center">
-                            Vokabeln von URL laden (voc.csv)
+                        <button onclick="loadVocabsFromUrl('vokabeln-more1.csv')" class="text-xs text-blue-600 hover:underline mt-1 block w-full text-center">
+                            Vokabeln more 1
+                        </button>
+                          <button onclick="loadVocabsFromUrl('vokabeln-more2.csv')" class="text-xs text-blue-600 hover:underline mt-1 block w-full text-center">
+                            Vokabeln more 2
                         </button>
                     </div>
 
@@ -274,6 +272,9 @@
                 <div class="flex gap-2 self-start sm:self-auto">
                     <button onclick="openResetStatsModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl btn-hover-scale shadow-sm">
                         <i class="fas fa-trash-alt mr-2"></i> Statistik zuruecksetzen
+                    </button>
+                    <button onclick="clearAllVocabs()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-xl btn-hover-scale shadow-sm">
+                        <i class="fas fa-eraser mr-2"></i> Alle Vokabeln loeschen
                     </button>
                     <button onclick="showDashboard()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl btn-hover-scale shadow-sm">
                         <i class="fas fa-arrow-left mr-2"></i> Zurueck
@@ -573,9 +574,9 @@
             showToast("Standard-Vokabeln wurden geladen!", "success");
         }
 
-        async function loadVocabsFromUrl() {
+        async function loadVocabsFromUrl(name) {
             try {
-                const response = await fetch('voc.csv', { cache: 'no-store' });
+                const response = await fetch(name, { cache: 'no-store' });
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
@@ -585,13 +586,13 @@
                 parseCSV(text);
 
                 if (db.length === 0) {
-                    showToast("voc.csv wurde geladen, aber es wurden keine gueltigen Vokabeln gefunden.", "warning");
+                    showToast(name+" wurde geladen, aber es wurden keine gueltigen Vokabeln gefunden.", "warning");
                     return;
                 }
 
                 saveToStorage();
                 updateDashboard();
-                showToast(`Vokabeln aus voc.csv geladen: ${db.length}`, "success");
+                showToast(`Vokabeln aus `+name+`geladen: ${db.length}`, "success");
             } catch (error) {
                 showToast("voc.csv konnte nicht geladen werden. Bitte Datei/URL pruefen.", "error");
             }
@@ -790,6 +791,17 @@
             renderAnalytics();
             updateDashboard();
             showToast("Statistik wurde zurueckgesetzt.", "success");
+        }
+
+        function clearAllVocabs() {
+            const shouldDelete = window.confirm('Moechtest du wirklich alle gespeicherten Vokabeln loeschen?');
+            if (!shouldDelete) return;
+
+            db = [];
+            saveToStorage();
+            updateDashboard();
+            renderAnalytics();
+            showToast('Alle Vokabeln wurden geloescht.', 'success');
         }
 
         function renderAnalytics() {
