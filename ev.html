@@ -31,10 +31,9 @@
 
     <!-- Header -->
     <header class="w-full max-w-4xl text-center mb-8 fade-in">
-        <h1 class="text-4xl font-extrabold text-blue-600 drop-shadow-sm flex justify-center items-center gap-3">
+        <h1 class="text-2xl font-extrabold text-blue-600 drop-shadow-sm flex justify-center items-center gap-3">
             <i class="fas fa-graduation-cap"></i> Vokabeltrainer
         </h1>
-        <p class="text-gray-500 mt-2 text-lg">Lerne Englisch intuitiv, effektiv und mit allen Sinnen.</p>
     </header>
 
     <!-- Main Container -->
@@ -143,6 +142,9 @@
                         <button onclick="loadDefaultVocabs()" class="text-xs text-blue-600 hover:underline mt-3 block w-full text-center">
                             Oder Standard-Vokabeln laden (Demo)
                         </button>
+                        <button onclick="loadVocabsFromUrl()" class="text-xs text-blue-600 hover:underline mt-1 block w-full text-center">
+                            Vokabeln von URL laden (voc.csv)
+                        </button>
                     </div>
 
                     <div class="mt-4 pt-4 border-t border-gray-200">
@@ -222,10 +224,10 @@
 
                 <!-- 3. Speak Area -->
                 <div id="interaction-speak" class="hidden w-full max-w-md flex flex-col items-center gap-4">
-                    <button id="btn-record" onmousedown="startRecording()" onmouseup="stopRecording()" onmouseleave="stopRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()" class="w-24 h-24 rounded-full bg-red-100 text-red-500 border-4 border-red-500 flex justify-center items-center text-3xl shadow-lg transition-transform hover:scale-105 active:scale-95 active:bg-red-500 active:text-white select-none">
+                    <button id="btn-record" onclick="toggleRecording()" class="w-24 h-24 rounded-full bg-red-100 text-red-500 border-4 border-red-500 flex justify-center items-center text-3xl shadow-lg transition-transform hover:scale-105 active:scale-95 active:bg-red-500 active:text-white select-none">
                         <i class="fas fa-microphone"></i>
                     </button>
-                    <p class="text-gray-500 font-semibold" id="speak-status">Halte den Button gedrückt und sprich das Wort.</p>
+                    <p class="text-gray-500 font-semibold" id="speak-status">Klicke auf den Button, um die Aufnahme zu starten.</p>
                     <p class="text-lg font-mono bg-gray-100 p-2 rounded hidden w-full" id="speak-transcript"></p>
                 </div>
 
@@ -569,6 +571,30 @@
             saveToStorage();
             updateDashboard();
             showToast("Standard-Vokabeln wurden geladen!", "success");
+        }
+
+        async function loadVocabsFromUrl() {
+            try {
+                const response = await fetch('voc.csv', { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const text = await response.text();
+                db = [];
+                parseCSV(text);
+
+                if (db.length === 0) {
+                    showToast("voc.csv wurde geladen, aber es wurden keine gueltigen Vokabeln gefunden.", "warning");
+                    return;
+                }
+
+                saveToStorage();
+                updateDashboard();
+                showToast(`Vokabeln aus voc.csv geladen: ${db.length}`, "success");
+            } catch (error) {
+                showToast("voc.csv konnte nicht geladen werden. Bitte Datei/URL pruefen.", "error");
+            }
         }
 
         // --- CSV Upload (Format: de;en;wortart;beispiel) ---
@@ -1069,15 +1095,25 @@
             area.classList.remove('hidden');
             document.getElementById('speak-transcript').classList.add('hidden');
             document.getElementById('speak-transcript').innerText = '';
-            document.getElementById('speak-status').innerText = 'Halte den Button gedrückt und sprich das Wort.';
+            document.getElementById('speak-status').innerText = 'Klicke auf den Button, um die Aufnahme zu starten.';
             
             const btn = document.getElementById('btn-record');
-            btn.classList.remove('bg-gray-300', 'border-gray-300', 'text-gray-500');
+            btn.classList.remove('bg-gray-300', 'border-gray-300', 'text-gray-500', 'bg-red-500', 'text-white');
             btn.classList.add('bg-red-100', 'border-red-500', 'text-red-500');
             btn.disabled = false;
+            isRecording = false;
         }
 
         let isRecording = false;
+        function toggleRecording() {
+            if (lesson.isAnswered) return;
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
         function startRecording() {
             if (!recognition || isRecording || lesson.isAnswered) return;
             isRecording = true;
