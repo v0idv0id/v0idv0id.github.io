@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiver Vokabeltrainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .btn-hover-scale { transition: transform 0.1s ease; }
+        .btn-hover-scale:active { transform: scale(0.97); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Toast Animations */
+        .toast-enter { animation: slideIn 0.3s forwards; }
+        .toast-leave { animation: slideOut 0.3s forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col items-center py-10 px-4">
+
+    <!-- Header -->
+    <header class="w-full max-w-4xl text-center mb-8 fade-in">
+        <h1 class="text-4xl font-extrabold text-blue-600 drop-shadow-sm flex justify-center items-center gap-3">
+            <i class="fas fa-graduation-cap"></i> Vokabeltrainer
+        </h1>
+        <p class="text-gray-500 mt-2 text-lg">Lerne Englisch intuitiv, effektiv und mit allen Sinnen.</p>
+    </header>
+
+    <!-- Main Container -->
+    <main class="w-full max-w-4xl glass-panel rounded-2xl shadow-xl overflow-hidden relative min-h-[600px] flex flex-col fade-in">
+        
+        <!-- ==================== VIEW: DASHBOARD ==================== -->
+        <div id="view-dashboard" class="p-8 flex flex-col gap-8 flex-grow">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Settings & Start -->
+                <div class="bg-blue-50 p-6 rounded-xl border border-blue-100 shadow-sm">
+                    <h2 class="text-2xl font-bold text-blue-800 mb-4 border-b border-blue-200 pb-2">
+                        <i class="fas fa-play-circle mr-2"></i> Lektion Starten
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Lernmodus:</label>
+                            <select id="config-mode" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="flashcard">Klassisch (Karteikarten)</option>
+                                <option value="mc">Multiple Choice (Erkennen)</option>
+                                <option value="write">Wort hinschreiben (Tippen)</option>
+                                <option value="speak">Wort vorsagen (Sprechen)</option>
+                            </select>
+                            <p id="speech-warning" class="text-xs text-red-500 mt-1 hidden"><i class="fas fa-exclamation-triangle"></i> Spracherkennung wird von deinem Browser leider nicht unterstützt.</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Abfragerichtung:</label>
+                            <select id="config-direction" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="de-en">Deutsch ➔ Englisch</option>
+                                <option value="en-de">Englisch ➔ Deutsch</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Anzahl Vokabeln (min. 10):</label>
+                            <input type="number" id="config-count" min="10" value="30" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+
+                        <div class="bg-white/70 border border-blue-100 rounded-xl p-3 space-y-2">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="config-weak-only" onchange="toggleWeakFilterControls()" class="w-5 h-5 text-blue-600 rounded">
+                                <label for="config-weak-only" class="text-sm font-semibold text-gray-700 cursor-pointer">
+                                    Nur schwierige Vokabeln ueben
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Fehlerquote groesser als:</label>
+                                <select id="config-error-threshold" disabled class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 disabled:text-gray-400">
+                                    <option value="20">20%</option>
+                                    <option value="30">30%</option>
+                                    <option value="40" selected>40%</option>
+                                    <option value="50">50%</option>
+                                    <option value="60">60%</option>
+                                    <option value="70">70%</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Kategorie der Fehlerquote:</label>
+                                <select id="config-error-category" disabled class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 disabled:text-gray-400">
+                                    <option value="overall" selected>Gesamt</option>
+                                    <option value="de-en">Deutsch -> Englisch</option>
+                                    <option value="en-de">Englisch -> Deutsch</option>
+                                    <option value="write">Schreiben</option>
+                                    <option value="mc">Multiple Choice</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 mt-2">
+                            <input type="checkbox" id="config-speech" checked class="w-5 h-5 text-blue-600 rounded">
+                            <label for="config-speech" class="text-sm font-semibold text-gray-700 cursor-pointer">
+                                Wörter & Sätze laut vorlesen
+                            </label>
+                        </div>
+
+                        <button onclick="startLesson()" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl btn-hover-scale shadow-lg transition-colors flex justify-center items-center gap-2">
+                            <i class="fas fa-rocket"></i> Jetzt loslegen!
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Database & CSV -->
+                <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">
+                        <i class="fas fa-database mr-2"></i> Vokabel-Datenbank
+                    </h2>
+                    
+                    <div class="flex-grow">
+                        <p class="text-sm text-gray-600 mb-2">
+                            Aktuell im Speicher: <span id="vocab-count-badge" class="font-bold text-blue-600 text-lg">0</span> Vokabeln.
+                        </p>
+                        <p class="text-xs text-gray-500 mb-4">
+                            Lade deine eigene Liste als CSV hoch. Format:<br>
+                            <code class="bg-gray-200 px-1 rounded block mt-1">deutsch;englisch;wortart;Beispielsatz</code>
+                        </p>
+                        
+                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-blue-400 transition-colors">
+                            <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="handleCSVUpload(event)">
+                            <label for="csv-upload" class="cursor-pointer flex flex-col items-center">
+                                <i class="fas fa-cloud-upload-alt text-3xl text-blue-500 mb-2"></i>
+                                <span class="text-sm font-semibold text-gray-700">CSV Datei auswählen</span>
+                            </label>
+                        </div>
+                        <button onclick="loadDefaultVocabs()" class="text-xs text-blue-600 hover:underline mt-3 block w-full text-center">
+                            Oder Standard-Vokabeln laden (Demo)
+                        </button>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <h3 class="text-sm font-bold text-gray-700 mb-2"><i class="fas fa-chart-line mr-1"></i> Letzte Ergebnisse:</h3>
+                        <div id="stats-container" class="text-xs text-gray-600 max-h-24 overflow-y-auto space-y-1">
+                            <!-- Stats will be loaded here -->
+                        </div>
+                        <button onclick="showAnalytics()" class="mt-4 w-full bg-gray-800 hover:bg-black text-white font-bold py-2 px-4 rounded-xl btn-hover-scale shadow-sm text-sm">
+                            <i class="fas fa-chart-pie mr-2"></i> Auswertung der Vokabeln
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW: LESSON ==================== -->
+        <div id="view-lesson" class="hidden p-8 flex-col flex-grow w-full relative">
+            
+            <!-- Header (Progress & Controls) -->
+            <div class="flex justify-between items-center mb-6">
+                <button onclick="confirmAbort()" class="text-gray-400 hover:text-red-500 transition-colors" title="Lektion abbrechen">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                <div class="flex-grow mx-8">
+                    <div class="flex justify-between text-xs font-bold text-gray-500 mb-1">
+                        <span>Fortschritt</span>
+                        <span id="lesson-progress-text">1 / 10</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="lesson-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 10%"></div>
+                    </div>
+                </div>
+                <div class="font-bold text-lg text-gray-700" id="score-display">0 <i class="fas fa-star text-yellow-400"></i></div>
+            </div>
+
+            <!-- Question Area -->
+            <div class="flex-grow flex flex-col justify-center items-center text-center">
+                <span id="question-label" class="text-sm uppercase tracking-widest text-gray-400 font-bold mb-2">Übersetze ins Englische</span>
+                <h2 id="question-word" class="text-5xl font-extrabold text-gray-800 mb-8 tracking-tight">Wort</h2>
+
+                <!-- Interactive Areas based on Mode -->
+                
+                <!-- 0. Flashcard Area -->
+                <div id="interaction-flashcard" class="hidden w-full max-w-md flex flex-col items-center gap-4">
+                    <button id="btn-reveal" onclick="revealFlashcard()" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 border-2 border-blue-300 font-bold py-4 px-6 rounded-xl text-lg transition-colors shadow-sm">
+                        <i class="fas fa-eye mr-2"></i> Lösung anzeigen
+                    </button>
+                    
+                    <div id="flashcard-solution-area" class="hidden w-full flex flex-col items-center fade-in">
+                        <div class="p-6 bg-white border-2 border-gray-200 rounded-xl w-full mb-4 shadow-sm">
+                            <span class="text-sm text-gray-400 uppercase font-bold tracking-wider">Lösung</span>
+                            <h3 id="flashcard-solution" class="text-3xl font-bold text-blue-600 mt-1 mb-2"></h3>
+                            <p id="flashcard-example" class="italic text-gray-600 text-sm"></p>
+                        </div>
+                        <p class="text-sm font-semibold text-gray-500 mb-3">Wie gut wusstest du das Wort?</p>
+                        <div class="grid grid-cols-2 gap-4 w-full">
+                            <button onclick="handleFlashcardAnswer(false)" class="bg-red-50 border-2 border-red-200 text-red-600 hover:bg-red-100 font-bold py-3 px-4 rounded-xl btn-hover-scale shadow-sm">
+                                <i class="fas fa-times mr-1"></i> Nicht gewusst
+                            </button>
+                            <button onclick="handleFlashcardAnswer(true)" class="bg-green-50 border-2 border-green-200 text-green-600 hover:bg-green-100 font-bold py-3 px-4 rounded-xl btn-hover-scale shadow-sm">
+                                <i class="fas fa-check mr-1"></i> Wusste ich!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. Multiple Choice Area -->
+                <div id="interaction-mc" class="hidden w-full max-w-md grid grid-cols-1 gap-3">
+                    <!-- Buttons injected via JS -->
+                </div>
+
+                <!-- 2. Write Area -->
+                <div id="interaction-write" class="hidden w-full max-w-md flex flex-col gap-3">
+                    <input type="text" id="write-input" placeholder="Tippe deine Antwort hier..." autocomplete="off" class="w-full text-center text-xl p-4 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-0 outline-none transition-colors">
+                    <button onclick="checkWriteAnswer()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl btn-hover-scale">Antwort prüfen</button>
+                </div>
+
+                <!-- 3. Speak Area -->
+                <div id="interaction-speak" class="hidden w-full max-w-md flex flex-col items-center gap-4">
+                    <button id="btn-record" onmousedown="startRecording()" onmouseup="stopRecording()" onmouseleave="stopRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()" class="w-24 h-24 rounded-full bg-red-100 text-red-500 border-4 border-red-500 flex justify-center items-center text-3xl shadow-lg transition-transform hover:scale-105 active:scale-95 active:bg-red-500 active:text-white select-none">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <p class="text-gray-500 font-semibold" id="speak-status">Halte den Button gedrückt und sprich das Wort.</p>
+                    <p class="text-lg font-mono bg-gray-100 p-2 rounded hidden w-full" id="speak-transcript"></p>
+                </div>
+
+            </div>
+
+            <!-- Feedback Area (Hidden initially, used for MC, Write, Speak) -->
+            <div id="feedback-area" class="hidden mt-8 p-6 rounded-xl text-center fade-in">
+                <h3 id="feedback-title" class="text-2xl font-bold mb-2">Richtig!</h3>
+                <p id="feedback-correct-word" class="text-xl font-semibold mb-2"></p>
+                <p id="feedback-example" class="italic text-gray-700" style="font-size: 18pt;"></p>
+                <button id="btn-next" onclick="nextQuestion()" class="mt-6 bg-gray-800 hover:bg-black text-white font-bold py-3 px-8 rounded-xl btn-hover-scale shadow-md inline-flex items-center gap-2">
+                    Weiter <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+            
+        </div>
+
+        <!-- ==================== VIEW: SUMMARY ==================== -->
+        <div id="view-summary" class="hidden p-8 flex-col justify-center items-center flex-grow fade-in text-center">
+            <i class="fas fa-trophy text-6xl text-yellow-400 mb-4 drop-shadow-md"></i>
+            <h2 class="text-4xl font-extrabold text-gray-800 mb-2">Lektion Abgeschlossen!</h2>
+            <p class="text-xl text-gray-600 mb-8">Dein Ergebnis: <span id="summary-score" class="font-bold text-blue-600">0</span> von <span id="summary-total">0</span> richtig.</p>
+            
+            <div class="w-full max-w-2xl bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8 text-left">
+                <h3 class="font-bold text-lg text-gray-800 mb-4 border-b pb-2">Zusammenfassung deiner Fehler:</h3>
+                <ul id="summary-mistakes" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    <!-- Mistakes injected here -->
+                </ul>
+                <p id="summary-perfect" class="hidden text-green-600 font-bold text-center py-4"><i class="fas fa-check-circle"></i> Perfekt! Du hast keine Fehler gemacht.</p>
+            </div>
+
+            <button onclick="showDashboard()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl btn-hover-scale shadow-lg">
+                <i class="fas fa-home mr-2"></i> Zurück zum Dashboard
+            </button>
+        </div>
+
+        <!-- ==================== VIEW: ANALYTICS ==================== -->
+        <div id="view-analytics" class="hidden p-8 flex-col flex-grow fade-in">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-gray-800"><i class="fas fa-chart-pie text-blue-600 mr-2"></i>Vokabel-Auswertung</h2>
+                    <p class="text-gray-500 text-sm mt-1">Metriken pro Wort: Richtung und Lernmodus</p>
+                </div>
+                <div class="flex gap-2 self-start sm:self-auto">
+                    <button onclick="openResetStatsModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl btn-hover-scale shadow-sm">
+                        <i class="fas fa-trash-alt mr-2"></i> Statistik zuruecksetzen
+                    </button>
+                    <button onclick="showDashboard()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl btn-hover-scale shadow-sm">
+                        <i class="fas fa-arrow-left mr-2"></i> Zurueck
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                    <div class="text-xs uppercase tracking-wider text-blue-700 font-bold">Vokabeln gesamt</div>
+                    <div id="analytics-total-vocab" class="text-3xl font-extrabold text-blue-800 mt-1">0</div>
+                </div>
+                <div class="bg-green-50 border border-green-100 rounded-xl p-4">
+                    <div class="text-xs uppercase tracking-wider text-green-700 font-bold">Schon geuebt</div>
+                    <div id="analytics-practiced-vocab" class="text-3xl font-extrabold text-green-800 mt-1">0</div>
+                </div>
+                <div class="bg-red-50 border border-red-100 rounded-xl p-4">
+                    <div class="text-xs uppercase tracking-wider text-red-700 font-bold">Schwierige Woerter</div>
+                    <div id="analytics-weak-vocab" class="text-3xl font-extrabold text-red-800 mt-1">0</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                <input id="analytics-search" type="text" oninput="renderAnalytics()" placeholder="Suche Deutsch oder Englisch..." class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <select id="analytics-filter" onchange="renderAnalytics()" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="all">Alle Vokabeln</option>
+                    <option value="practiced">Nur geuebte</option>
+                    <option value="weak">Nur schwierige</option>
+                </select>
+                <select id="analytics-sort" onchange="renderAnalytics()" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="errorRateDesc">Sortierung: Hoechste Fehlerquote</option>
+                    <option value="attemptsDesc">Sortierung: Meiste Versuche</option>
+                    <option value="alpha">Sortierung: Alphabetisch</option>
+                </select>
+            </div>
+
+            <div class="border border-gray-200 rounded-xl overflow-hidden flex-grow bg-white shadow-sm min-h-[260px]">
+                <div class="overflow-auto max-h-[420px]">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr class="text-left text-gray-600">
+                                <th class="p-3 font-bold">Deutsch</th>
+                                <th class="p-3 font-bold">Englisch</th>
+                                <th class="p-3 font-bold">D->E</th>
+                                <th class="p-3 font-bold">E->D</th>
+                                <th class="p-3 font-bold">Schreiben</th>
+                                <th class="p-3 font-bold">MC</th>
+                                <th class="p-3 font-bold">Versuche</th>
+                                <th class="p-3 font-bold">Fehlerquote</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analytics-table-body" class="divide-y divide-gray-100">
+                            <!-- Analytics rows -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="analytics-empty" class="hidden p-8 text-center text-gray-500">
+                    Keine passenden Vokabeln gefunden.
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Modal for Aborting -->
+    <div id="abort-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center px-4 fade-in">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 class="text-xl font-bold text-gray-800 mb-3"><i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>Lektion abbrechen?</h3>
+            <p class="text-gray-600 mb-6">Dein bisheriger Fortschritt geht verloren. Möchtest du wirklich zum Dashboard zurückkehren?</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeAbortModal()" class="px-4 py-2 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300 transition-colors">Nein, weiterlernen</button>
+                <button onclick="abortLesson()" class="px-4 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors">Ja, abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal for Reset Statistics -->
+    <div id="reset-stats-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center px-4 fade-in">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h3 class="text-xl font-bold text-gray-800 mb-3"><i class="fas fa-trash-alt text-red-600 mr-2"></i>Statistik zuruecksetzen?</h3>
+            <p class="text-gray-600 mb-6">Dadurch werden alle Metriken pro Vokabel und die Lektionsergebnisse geloescht. Dieser Schritt kann nicht rueckgaengig gemacht werden.</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeResetStatsModal()" class="px-4 py-2 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300 transition-colors">Abbrechen</button>
+                <button onclick="confirmResetStatistics()" class="px-4 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors">Ja, zuruecksetzen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3"></div>
+
+    <!-- Script Logic -->
+    <script>
+        // --- State Management ---
+        let db = []; // Array of {de, en, wortart, example}
+        let history = []; // Lesson history
+        
+        // Active Lesson State
+        let lesson = {
+            words: [],
+            currentIndex: 0,
+            score: 0,
+            mode: 'flashcard',
+            direction: 'de-en', // 'de-en' means Show DE, Ask EN
+            speechEnabled: true,
+            mistakes: [],
+            isAnswered: false
+        };
+        let pendingSpeechUtterances = 0;
+
+        // --- Init & Storage ---
+        const StorageKey = 'vokabeltrainer_db';
+        const HistoryKey = 'vokabeltrainer_history';
+
+        // Check for Speech Recognition support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+        } else {
+            document.getElementById('speech-warning').classList.remove('hidden');
+            document.getElementById('config-mode').querySelector('option[value="speak"]').disabled = true;
+        }
+
+        function init() {
+            loadFromStorage();
+            updateDashboard();
+            toggleWeakFilterControls();
+            showView('dashboard');
+        }
+
+        function loadFromStorage() {
+            const savedDb = localStorage.getItem(StorageKey);
+            if (savedDb) {
+                try {
+                    db = JSON.parse(savedDb);
+                } catch(e) { db = []; }
+            }
+            ensureAllVocabMetrics();
+            
+            const savedHistory = localStorage.getItem(HistoryKey);
+            if (savedHistory) {
+                try {
+                    history = JSON.parse(savedHistory);
+                } catch(e) { history = []; }
+            }
+        }
+
+        function saveToStorage() {
+            ensureAllVocabMetrics();
+            localStorage.setItem(StorageKey, JSON.stringify(db));
+        }
+
+        function createDefaultMetrics() {
+            return {
+                direction: {
+                    deEn: { correct: 0, wrong: 0 },
+                    enDe: { correct: 0, wrong: 0 }
+                },
+                mode: {
+                    write: { correct: 0, wrong: 0 },
+                    mc: { correct: 0, wrong: 0 }
+                }
+            };
+        }
+
+        function ensureVocabMetrics(vocab) {
+            if (!vocab.metrics || typeof vocab.metrics !== 'object') {
+                vocab.metrics = createDefaultMetrics();
+                return;
+            }
+
+            if (!vocab.metrics.direction || typeof vocab.metrics.direction !== 'object') {
+                vocab.metrics.direction = createDefaultMetrics().direction;
+            }
+            if (!vocab.metrics.direction.deEn || typeof vocab.metrics.direction.deEn !== 'object') {
+                vocab.metrics.direction.deEn = { correct: 0, wrong: 0 };
+            }
+            if (!vocab.metrics.direction.enDe || typeof vocab.metrics.direction.enDe !== 'object') {
+                vocab.metrics.direction.enDe = { correct: 0, wrong: 0 };
+            }
+
+            if (!vocab.metrics.mode || typeof vocab.metrics.mode !== 'object') {
+                vocab.metrics.mode = createDefaultMetrics().mode;
+            }
+            if (!vocab.metrics.mode.write || typeof vocab.metrics.mode.write !== 'object') {
+                vocab.metrics.mode.write = { correct: 0, wrong: 0 };
+            }
+            if (!vocab.metrics.mode.mc || typeof vocab.metrics.mode.mc !== 'object') {
+                vocab.metrics.mode.mc = { correct: 0, wrong: 0 };
+            }
+        }
+
+        function ensureAllVocabMetrics() {
+            db.forEach(ensureVocabMetrics);
+        }
+
+        function recordVocabMetrics(vocab, isCorrect, mode, direction) {
+            ensureVocabMetrics(vocab);
+
+            const directionBucket = direction === 'de-en' ? vocab.metrics.direction.deEn : vocab.metrics.direction.enDe;
+            if (isCorrect) {
+                directionBucket.correct++;
+            } else {
+                directionBucket.wrong++;
+            }
+
+            if (mode === 'write' || mode === 'mc') {
+                const modeBucket = vocab.metrics.mode[mode];
+                if (isCorrect) {
+                    modeBucket.correct++;
+                } else {
+                    modeBucket.wrong++;
+                }
+            }
+        }
+
+        function saveHistory() {
+            localStorage.setItem(HistoryKey, JSON.stringify(history));
+            updateDashboardStats();
+        }
+
+        function setNextButtonEnabled(enabled) {
+            const nextBtn = document.getElementById('btn-next');
+            if (!nextBtn) return;
+
+            nextBtn.disabled = !enabled;
+            nextBtn.classList.toggle('opacity-50', !enabled);
+            nextBtn.classList.toggle('cursor-not-allowed', !enabled);
+        }
+
+        // --- UI Helpers: Toast & Modal ---
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = "bg-gray-800";
+            let icon = "fa-info-circle";
+            
+            if (type === "success") { bgClass = "bg-green-600"; icon = "fa-check-circle"; }
+            else if (type === "error") { bgClass = "bg-red-600"; icon = "fa-exclamation-circle"; }
+            else if (type === "warning") { bgClass = "bg-yellow-500"; icon = "fa-exclamation-triangle"; }
+
+            toast.className = `${bgClass} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 toast-enter font-semibold text-sm`;
+            toast.innerHTML = `<i class="fas ${icon}"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-leave');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function confirmAbort() {
+            document.getElementById('abort-modal').classList.remove('hidden');
+        }
+
+        function closeAbortModal() {
+            document.getElementById('abort-modal').classList.add('hidden');
+        }
+
+        function openResetStatsModal() {
+            document.getElementById('reset-stats-modal').classList.remove('hidden');
+        }
+
+        function closeResetStatsModal() {
+            document.getElementById('reset-stats-modal').classList.add('hidden');
+        }
+
+        // --- Default Vocabulary ---
+        const defaultVocabs = [
+            {de: "Haus", en: "house", wortart: "Substantiv", example: "Das Haus ist groß. / The house is big."},
+            {de: "Baum", en: "tree", wortart: "Substantiv", example: "Der Baum ist grün. / The tree is green."},
+            {de: "Apfel", en: "apple", wortart: "Substantiv", example: "Ich esse einen Apfel. / I eat an apple."},
+            {de: "Buch", en: "book", wortart: "Substantiv", example: "Sie liest ein Buch. / She reads a book."},
+            {de: "Auto", en: "car", wortart: "Substantiv", example: "Er fährt ein Auto. / He drives a car."},
+            {de: "schnell", en: "fast", wortart: "Adjektiv", example: "Das Auto ist schnell. / The car is fast."},
+            {de: "Hund", en: "dog", wortart: "Substantiv", example: "Der Hund bellt. / The dog barks."},
+            {de: "Wasser", en: "water", wortart: "Substantiv", example: "Ich trinke Wasser. / I drink water."},
+            {de: "Freund", en: "friend", wortart: "Substantiv", example: "Er ist mein bester Freund. / He is my best friend."},
+            {de: "Zeit", en: "time", wortart: "Substantiv", example: "Wir haben keine Zeit. / We have no time."},
+            {de: "Stadt", en: "city", wortart: "Substantiv", example: "Berlin ist eine große Stadt. / Berlin is a big city."},
+            {de: "Weg", en: "way", wortart: "Substantiv", example: "Das ist der richtige Weg. / This is the right way."},
+            {de: "Schule", en: "school", wortart: "Substantiv", example: "Die Kinder gehen zur Schule. / The children go to school."},
+            {de: "lernen", en: "learn", wortart: "Verb", example: "Ich lerne jeden Tag. / I learn every day."},
+            {de: "Welt", en: "world", wortart: "Substantiv", example: "Die Welt ist schön. / The world is beautiful."}
+        ];
+
+        function loadDefaultVocabs() {
+            db = [...defaultVocabs];
+            ensureAllVocabMetrics();
+            saveToStorage();
+            updateDashboard();
+            showToast("Standard-Vokabeln wurden geladen!", "success");
+        }
+
+        // --- CSV Upload (Format: de;en;wortart;beispiel) ---
+        function handleCSVUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseCSV(text);
+                saveToStorage();
+                updateDashboard();
+                event.target.value = ''; // Reset input
+                showToast("CSV Datei erfolgreich eingelesen!", "success");
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            let addedCount = 0;
+            
+            for (let line of lines) {
+                if (!line.trim()) continue;
+                
+                // Neues Format: Trennung strikt durch Semikolon
+                let parts = line.split(';').map(e => e.replace(/^"|"$/g, '').trim());
+                
+                // Fallback für alte Komma-getrennte Dateien, falls mal jemand eine alte Liste hochlädt
+                if (parts.length < 2 && line.includes(',')) {
+                    const regex = /("([^"]|"")*"|[^,]+)/g;
+                    parts = (line.match(regex) || []).map(e => e.replace(/^"|"$/g, '').trim());
+                    
+                    if (parts.length >= 2) {
+                        const vocab = {
+                            de: parts[0],
+                            en: parts[1],
+                            wortart: "",
+                            example: parts[2] || "Kein Beispielsatz vorhanden."
+                        };
+                        ensureVocabMetrics(vocab);
+                        db.push(vocab);
+                        addedCount++;
+                    }
+                    continue;
+                }
+
+                if (parts.length >= 2) {
+                    const vocab = {
+                        de: parts[0], // Spalte 1: Deutsch
+                        en: parts[1], // Spalte 2: Englisch
+                        wortart: parts[2] || "", // Spalte 3: Wortart
+                        example: parts[3] || "Kein Beispielsatz vorhanden." // Spalte 4: Beispielsatz
+                    };
+                    ensureVocabMetrics(vocab);
+                    db.push(vocab);
+                    addedCount++;
+                }
+            }
+        }
+
+        // --- Dashboard UI ---
+        function updateDashboard() {
+            document.getElementById('vocab-count-badge').innerText = db.length;
+            updateDashboardStats();
+        }
+
+        function updateDashboardStats() {
+            const container = document.getElementById('stats-container');
+            container.innerHTML = '';
+            
+            if (history.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 italic">Noch keine Lektionen absolviert.</p>';
+                return;
+            }
+
+            // Show last 5
+            const recent = history.slice().reverse().slice(0, 5);
+            recent.forEach(h => {
+                const date = new Date(h.timestamp).toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'});
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center border-b border-gray-100 pb-1';
+                
+                let modeIcon = 'fa-check-square'; // MC
+                if(h.mode === 'write') modeIcon = 'fa-keyboard';
+                if(h.mode === 'speak') modeIcon = 'fa-microphone';
+                if(h.mode === 'flashcard') modeIcon = 'fa-clone';
+
+                div.innerHTML = `
+                    <span><i class="fas ${modeIcon} text-gray-400 w-5"></i> ${date}</span>
+                    <span class="font-bold ${h.score === h.total ? 'text-green-500' : 'text-blue-600'}">${h.score}/${h.total}</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function showView(viewName) {
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-lesson').classList.add('hidden');
+            document.getElementById('view-summary').classList.add('hidden');
+            document.getElementById('view-analytics').classList.add('hidden');
+            
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            document.getElementById(`view-${viewName}`).classList.add('fade-in');
+        }
+
+        function showDashboard() {
+            updateDashboard();
+            showView('dashboard');
+        }
+
+        function toggleWeakFilterControls() {
+            const weakOnly = document.getElementById('config-weak-only');
+            const threshold = document.getElementById('config-error-threshold');
+            const category = document.getElementById('config-error-category');
+            if (!weakOnly || !threshold || !category) return;
+            threshold.disabled = !weakOnly.checked;
+            category.disabled = !weakOnly.checked;
+        }
+
+        function getMetricBucketStats(bucket) {
+            const attempts = bucket.correct + bucket.wrong;
+            const errorRate = attempts > 0 ? (bucket.wrong / attempts) * 100 : 0;
+            return { attempts, wrong: bucket.wrong, errorRate };
+        }
+
+        function getDirectionTotals(vocab) {
+            const deEn = vocab.metrics.direction.deEn;
+            const enDe = vocab.metrics.direction.enDe;
+            return {
+                attempts: deEn.correct + deEn.wrong + enDe.correct + enDe.wrong,
+                wrong: deEn.wrong + enDe.wrong
+            };
+        }
+
+        function getErrorRatePercentByCategory(vocab, category = 'overall') {
+            if (category === 'de-en') {
+                return getMetricBucketStats(vocab.metrics.direction.deEn).errorRate;
+            }
+            if (category === 'en-de') {
+                return getMetricBucketStats(vocab.metrics.direction.enDe).errorRate;
+            }
+            if (category === 'write') {
+                return getMetricBucketStats(vocab.metrics.mode.write).errorRate;
+            }
+            if (category === 'mc') {
+                return getMetricBucketStats(vocab.metrics.mode.mc).errorRate;
+            }
+
+            const totals = getDirectionTotals(vocab);
+            if (totals.attempts === 0) return 0;
+            return (totals.wrong / totals.attempts) * 100;
+        }
+
+        function getAttemptsByCategory(vocab, category = 'overall') {
+            if (category === 'de-en') {
+                return getMetricBucketStats(vocab.metrics.direction.deEn).attempts;
+            }
+            if (category === 'en-de') {
+                return getMetricBucketStats(vocab.metrics.direction.enDe).attempts;
+            }
+            if (category === 'write') {
+                return getMetricBucketStats(vocab.metrics.mode.write).attempts;
+            }
+            if (category === 'mc') {
+                return getMetricBucketStats(vocab.metrics.mode.mc).attempts;
+            }
+            return getDirectionTotals(vocab).attempts;
+        }
+
+        function isWeakVocab(vocab) {
+            const totals = getDirectionTotals(vocab);
+            if (totals.attempts === 0) return false;
+            const errorRate = totals.wrong / totals.attempts;
+            return totals.attempts >= 3 && errorRate >= 0.4;
+        }
+
+        function showAnalytics() {
+            ensureAllVocabMetrics();
+            renderAnalytics();
+            showView('analytics');
+        }
+
+        function confirmResetStatistics() {
+            db.forEach(vocab => {
+                vocab.metrics = createDefaultMetrics();
+            });
+            history = [];
+            saveToStorage();
+            saveHistory();
+            closeResetStatsModal();
+            renderAnalytics();
+            updateDashboard();
+            showToast("Statistik wurde zurueckgesetzt.", "success");
+        }
+
+        function renderAnalytics() {
+            ensureAllVocabMetrics();
+
+            const searchInput = document.getElementById('analytics-search');
+            const filterSelect = document.getElementById('analytics-filter');
+            const sortSelect = document.getElementById('analytics-sort');
+            const tableBody = document.getElementById('analytics-table-body');
+            const emptyState = document.getElementById('analytics-empty');
+
+            if (!searchInput || !filterSelect || !sortSelect || !tableBody || !emptyState) return;
+
+            const query = searchInput.value.trim().toLowerCase();
+            const filter = filterSelect.value;
+            const sort = sortSelect.value;
+
+            document.getElementById('analytics-total-vocab').innerText = db.length;
+            document.getElementById('analytics-practiced-vocab').innerText = db.filter(v => getDirectionTotals(v).attempts > 0).length;
+            document.getElementById('analytics-weak-vocab').innerText = db.filter(v => isWeakVocab(v)).length;
+
+            let rows = db.filter(vocab => {
+                const matchesSearch = !query || vocab.de.toLowerCase().includes(query) || vocab.en.toLowerCase().includes(query);
+                if (!matchesSearch) return false;
+
+                const attempts = getDirectionTotals(vocab).attempts;
+                if (filter === 'practiced') return attempts > 0;
+                if (filter === 'weak') return isWeakVocab(vocab);
+                return true;
+            });
+
+            rows.sort((a, b) => {
+                const ta = getDirectionTotals(a);
+                const tb = getDirectionTotals(b);
+                const ra = ta.attempts > 0 ? ta.wrong / ta.attempts : -1;
+                const rb = tb.attempts > 0 ? tb.wrong / tb.attempts : -1;
+
+                if (sort === 'alpha') {
+                    return a.de.localeCompare(b.de, 'de');
+                }
+                if (sort === 'attemptsDesc') {
+                    return tb.attempts - ta.attempts || a.de.localeCompare(b.de, 'de');
+                }
+                return rb - ra || tb.attempts - ta.attempts || a.de.localeCompare(b.de, 'de');
+            });
+
+            tableBody.innerHTML = '';
+
+            if (rows.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            rows.forEach(vocab => {
+                const deEn = vocab.metrics.direction.deEn;
+                const enDe = vocab.metrics.direction.enDe;
+                const write = vocab.metrics.mode.write;
+                const mc = vocab.metrics.mode.mc;
+                const totals = getDirectionTotals(vocab);
+                const errorRate = Math.round(getErrorRatePercentByCategory(vocab, 'overall'));
+                const deEnRate = Math.round(getMetricBucketStats(deEn).errorRate);
+                const enDeRate = Math.round(getMetricBucketStats(enDe).errorRate);
+                const writeRate = Math.round(getMetricBucketStats(write).errorRate);
+                const mcRate = Math.round(getMetricBucketStats(mc).errorRate);
+                const deEnAttempts = getMetricBucketStats(deEn).attempts;
+                const enDeAttempts = getMetricBucketStats(enDe).attempts;
+                const writeAttempts = getMetricBucketStats(write).attempts;
+                const mcAttempts = getMetricBucketStats(mc).attempts;
+
+                const tr = document.createElement('tr');
+                tr.className = totals.attempts > 0 ? 'hover:bg-gray-50' : 'bg-gray-50/50';
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-gray-800">${vocab.de}</td>
+                    <td class="p-3 text-gray-700">${vocab.en}</td>
+                    <td class="p-3 text-gray-700">
+                        <div><span class="text-green-600 font-semibold">${deEn.correct}</span>/<span class="text-red-600 font-semibold">${deEn.wrong}</span></div>
+                        <div class="text-xs ${deEnRate >= 40 ? 'text-red-600' : 'text-gray-500'}">Quote: ${deEnAttempts > 0 ? `${deEnRate}%` : '-'}</div>
+                    </td>
+                    <td class="p-3 text-gray-700">
+                        <div><span class="text-green-600 font-semibold">${enDe.correct}</span>/<span class="text-red-600 font-semibold">${enDe.wrong}</span></div>
+                        <div class="text-xs ${enDeRate >= 40 ? 'text-red-600' : 'text-gray-500'}">Quote: ${enDeAttempts > 0 ? `${enDeRate}%` : '-'}</div>
+                    </td>
+                    <td class="p-3 text-gray-700">
+                        <div><span class="text-green-600 font-semibold">${write.correct}</span>/<span class="text-red-600 font-semibold">${write.wrong}</span></div>
+                        <div class="text-xs ${writeRate >= 40 ? 'text-red-600' : 'text-gray-500'}">Quote: ${writeAttempts > 0 ? `${writeRate}%` : '-'}</div>
+                    </td>
+                    <td class="p-3 text-gray-700">
+                        <div><span class="text-green-600 font-semibold">${mc.correct}</span>/<span class="text-red-600 font-semibold">${mc.wrong}</span></div>
+                        <div class="text-xs ${mcRate >= 40 ? 'text-red-600' : 'text-gray-500'}">Quote: ${mcAttempts > 0 ? `${mcRate}%` : '-'}</div>
+                    </td>
+                    <td class="p-3 text-gray-700 font-semibold">${totals.attempts}</td>
+                    <td class="p-3 ${errorRate >= 40 ? 'text-red-600' : 'text-gray-700'} font-bold">${errorRate}%</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // --- Lesson Logic ---
+        function startLesson() {
+            const weakOnly = document.getElementById('config-weak-only').checked;
+            const errorThreshold = parseInt(document.getElementById('config-error-threshold').value, 10) || 40;
+            const errorCategory = document.getElementById('config-error-category').value || 'overall';
+
+            if (!weakOnly && db.length < 10) {
+                showToast("Bitte lade zuerst Vokabeln hoch (min. 10).", "warning");
+                return;
+            }
+
+            let sourceWords = [...db];
+            if (weakOnly) {
+                sourceWords = sourceWords.filter(vocab => {
+                    const attempts = getAttemptsByCategory(vocab, errorCategory);
+                    return attempts > 0 && getErrorRatePercentByCategory(vocab, errorCategory) > errorThreshold;
+                });
+
+                if (sourceWords.length === 0) {
+                    showToast(`Keine Vokabel mit Fehlerquote > ${errorThreshold}% gefunden.`, "warning");
+                    return;
+                }
+            }
+
+            const countInput = parseInt(document.getElementById('config-count').value);
+            const minCount = weakOnly ? 1 : 10;
+            const count = Math.max(minCount, Math.min(countInput, sourceWords.length));
+            
+            // Setup lesson state
+            lesson.mode = document.getElementById('config-mode').value;
+            lesson.direction = document.getElementById('config-direction').value;
+            lesson.speechEnabled = document.getElementById('config-speech').checked;
+            lesson.currentIndex = 0;
+            lesson.score = 0;
+            lesson.mistakes = [];
+            lesson.isAnswered = false;
+
+            // Pick random words
+            let shuffledDb = [...sourceWords].sort(() => 0.5 - Math.random());
+            lesson.words = shuffledDb.slice(0, count);
+
+            showView('lesson');
+            renderQuestion();
+        }
+
+        function abortLesson() {
+            closeAbortModal();
+            showDashboard();
+        }
+
+        function renderQuestion() {
+            lesson.isAnswered = false;
+            const currentObj = lesson.words[lesson.currentIndex];
+            
+            // Determine languages based on direction
+            const isDeToEn = lesson.direction === 'de-en';
+            const questionText = isDeToEn ? currentObj.de : currentObj.en;
+            const label = isDeToEn ? "Übersetze ins Englische" : "Übersetze ins Deutsche";
+
+            // Update Header
+            document.getElementById('lesson-progress-text').innerText = `${lesson.currentIndex + 1} / ${lesson.words.length}`;
+            document.getElementById('lesson-progress-bar').style.width = `${((lesson.currentIndex) / lesson.words.length) * 100}%`;
+            document.getElementById('score-display').innerHTML = `${lesson.score} <i class="fas fa-star text-yellow-400"></i>`;
+            
+            // Update Question
+            document.getElementById('question-label').innerText = label;
+            document.getElementById('question-word').innerText = questionText;
+
+            // Reset Feedback Area
+            const feedbackArea = document.getElementById('feedback-area');
+            feedbackArea.classList.add('hidden');
+            feedbackArea.classList.remove('bg-green-100', 'bg-red-100', 'border-green-200', 'border-red-200', 'border', 'text-green-800', 'text-red-800');
+
+            // Hide all interaction areas
+            document.getElementById('interaction-flashcard').classList.add('hidden');
+            document.getElementById('interaction-mc').classList.add('hidden');
+            document.getElementById('interaction-write').classList.add('hidden');
+            document.getElementById('interaction-speak').classList.add('hidden');
+
+            // Render specific interaction area
+            if (lesson.mode === 'flashcard') {
+                renderFlashcard(currentObj, isDeToEn);
+            } else if (lesson.mode === 'mc') {
+                renderMC(currentObj, isDeToEn);
+            } else if (lesson.mode === 'write') {
+                renderWrite();
+            } else if (lesson.mode === 'speak') {
+                renderSpeak(isDeToEn);
+            }
+        }
+
+        // --- Interaction: Flashcard ---
+        function renderFlashcard(currentObj, isDeToEn) {
+            const area = document.getElementById('interaction-flashcard');
+            area.classList.remove('hidden');
+            
+            document.getElementById('btn-reveal').classList.remove('hidden');
+            document.getElementById('flashcard-solution-area').classList.add('hidden');
+            
+            document.getElementById('flashcard-solution').innerText = isDeToEn ? currentObj.en : currentObj.de;
+            document.getElementById('flashcard-example').innerText = currentObj.example !== "Kein Beispielsatz vorhanden." ? currentObj.example : "";
+        }
+
+        function revealFlashcard() {
+            document.getElementById('btn-reveal').classList.add('hidden');
+            document.getElementById('flashcard-solution-area').classList.remove('hidden');
+            
+            // Sofortige Sprachausgabe beim Aufdecken
+            if (lesson.speechEnabled) {
+                const currentObj = lesson.words[lesson.currentIndex];
+                const isDeToEn = lesson.direction === 'de-en';
+                playTTS(currentObj, isDeToEn);
+            }
+        }
+
+        function handleFlashcardAnswer(knewIt) {
+            if (lesson.isAnswered) return;
+            lesson.isAnswered = true;
+            
+            const currentObj = lesson.words[lesson.currentIndex];
+            recordVocabMetrics(currentObj, knewIt, lesson.mode, lesson.direction);
+            saveToStorage();
+
+            if (knewIt) {
+                lesson.score++;
+            } else {
+                lesson.mistakes.push({
+                    obj: currentObj,
+                    given: "(Karteikarte: Nicht gewusst)",
+                    direction: lesson.direction
+                });
+            }
+            
+            nextQuestion();
+        }
+
+        // --- Interaction: Multiple Choice ---
+        function renderMC(correctObj, isDeToEn) {
+            const area = document.getElementById('interaction-mc');
+            area.classList.remove('hidden');
+            area.innerHTML = ''; // clear
+
+            const correctAnswer = isDeToEn ? correctObj.en : correctObj.de;
+            
+            // Get 3 wrong answers
+            let options = [correctAnswer];
+            let otherWords = db.filter(w => (isDeToEn ? w.en : w.de) !== correctAnswer);
+            otherWords = otherWords.sort(() => 0.5 - Math.random()).slice(0, 3);
+            otherWords.forEach(w => options.push(isDeToEn ? w.en : w.de));
+
+            // Shuffle options
+            options = options.sort(() => 0.5 - Math.random());
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'mc-btn w-full bg-white border-2 border-gray-200 text-gray-700 font-bold py-4 px-6 rounded-xl text-lg hover:border-blue-400 hover:bg-blue-50 transition-all text-left shadow-sm';
+                btn.innerText = opt;
+                btn.onclick = () => handleAnswer(opt === correctAnswer, opt);
+                area.appendChild(btn);
+            });
+        }
+
+        // --- Interaction: Write ---
+        function renderWrite() {
+            const area = document.getElementById('interaction-write');
+            area.classList.remove('hidden');
+            const input = document.getElementById('write-input');
+            input.value = '';
+            input.disabled = false;
+            // Vorherige Farben entfernen
+            input.classList.remove('bg-green-100', 'border-green-500', 'text-green-800', 'bg-red-100', 'border-red-500', 'text-red-800');
+            setTimeout(() => input.focus(), 100); // Focus after transition
+            
+            // Allow Enter key logic corrected
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); // Verhindert Standard-Browserverhalten
+                    if (!lesson.isAnswered) {
+                        checkWriteAnswer();
+                    } else {
+                        nextQuestion();
+                    }
+                }
+            };
+        }
+
+        function checkWriteAnswer() {
+            if(lesson.isAnswered) return;
+            const inputVal = document.getElementById('write-input').value.trim();
+            if(!inputVal) return;
+
+            const isDeToEn = lesson.direction === 'de-en';
+            const currentObj = lesson.words[lesson.currentIndex];
+            const correctAnswer = isDeToEn ? currentObj.en : currentObj.de;
+
+            const isCorrect = inputVal.toLowerCase() === correctAnswer.toLowerCase();
+            document.getElementById('write-input').disabled = true;
+            handleAnswer(isCorrect, inputVal);
+        }
+
+        // --- Interaction: Speak ---
+        function renderSpeak(isDeToEn) {
+            const area = document.getElementById('interaction-speak');
+            area.classList.remove('hidden');
+            document.getElementById('speak-transcript').classList.add('hidden');
+            document.getElementById('speak-transcript').innerText = '';
+            document.getElementById('speak-status').innerText = 'Halte den Button gedrückt und sprich das Wort.';
+            
+            const btn = document.getElementById('btn-record');
+            btn.classList.remove('bg-gray-300', 'border-gray-300', 'text-gray-500');
+            btn.classList.add('bg-red-100', 'border-red-500', 'text-red-500');
+            btn.disabled = false;
+        }
+
+        let isRecording = false;
+        function startRecording() {
+            if (!recognition || isRecording || lesson.isAnswered) return;
+            isRecording = true;
+            
+            const isDeToEn = lesson.direction === 'de-en';
+            recognition.lang = isDeToEn ? 'en-US' : 'de-DE';
+            
+            document.getElementById('speak-status').innerText = 'Zuhören...';
+            document.getElementById('btn-record').classList.replace('bg-red-100', 'bg-red-500');
+            document.getElementById('btn-record').classList.replace('text-red-500', 'text-white');
+
+            try { recognition.start(); } catch(e) {}
+
+            recognition.onresult = (event) => {
+                const transcript = Array.from(event.results)
+                    .map(result => result[0])
+                    .map(result => result.transcript)
+                    .join('');
+                document.getElementById('speak-transcript').innerText = transcript;
+                document.getElementById('speak-transcript').classList.remove('hidden');
+            };
+        }
+
+        function stopRecording() {
+            if (!isRecording) return;
+            isRecording = false;
+            if(recognition) recognition.stop();
+            
+            document.getElementById('speak-status').innerText = 'Wird ausgewertet...';
+            document.getElementById('btn-record').classList.replace('bg-red-500', 'bg-gray-300');
+            document.getElementById('btn-record').classList.replace('border-red-500', 'border-gray-300');
+            document.getElementById('btn-record').classList.replace('text-white', 'text-gray-500');
+            document.getElementById('btn-record').disabled = true;
+
+            setTimeout(checkSpeakAnswer, 500); // Small delay to let recognition finish
+        }
+
+        function checkSpeakAnswer() {
+            if(lesson.isAnswered) return;
+            const transcript = document.getElementById('speak-transcript').innerText.trim().toLowerCase();
+            
+            const isDeToEn = lesson.direction === 'de-en';
+            const currentObj = lesson.words[lesson.currentIndex];
+            const correctAnswer = isDeToEn ? currentObj.en.toLowerCase() : currentObj.de.toLowerCase();
+
+            // Simple fuzzy match (remove punctuation)
+            const cleanTranscript = transcript.replace(/[.,!?]/g, '');
+            const cleanCorrect = correctAnswer.replace(/[.,!?]/g, '');
+
+            // For speech, we allow it if the transcript *contains* the word to be lenient with dictation APIs
+            const isCorrect = cleanTranscript === cleanCorrect || cleanTranscript.includes(cleanCorrect);
+
+            handleAnswer(isCorrect, transcript || "(Nichts verstanden)");
+        }
+
+        // --- Shared Answer Handling (for MC, Write, Speak) ---
+        function handleAnswer(isCorrect, userAnswer) {
+            lesson.isAnswered = true;
+            const currentObj = lesson.words[lesson.currentIndex];
+            const isDeToEn = lesson.direction === 'de-en';
+            const targetWord = isDeToEn ? currentObj.en : currentObj.de;
+            recordVocabMetrics(currentObj, isCorrect, lesson.mode, lesson.direction);
+            saveToStorage();
+
+            // Visual feedback based on mode
+            if(lesson.mode === 'mc') {
+                const btns = document.querySelectorAll('.mc-btn');
+                btns.forEach(b => {
+                    b.disabled = true;
+                    if(b.innerText === targetWord) {
+                        b.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+                    } else if (b.innerText === userAnswer && !isCorrect) {
+                        b.classList.add('bg-red-100', 'border-red-500', 'text-red-800');
+                    }
+                });
+            } else if (lesson.mode === 'write') {
+                const inputField = document.getElementById('write-input');
+                if (isCorrect) {
+                    inputField.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+                } else {
+                    inputField.classList.add('bg-red-100', 'border-red-500', 'text-red-800');
+                    inputField.value = `${userAnswer} ➔ ${targetWord}`;
+                }
+            }
+
+            // Record stats
+            if (isCorrect) {
+                lesson.score++;
+            } else {
+                lesson.mistakes.push({
+                    obj: currentObj,
+                    given: userAnswer,
+                    direction: lesson.direction
+                });
+            }
+
+            showFeedback(isCorrect, targetWord, currentObj.example);
+            
+            // TTS
+            if (lesson.speechEnabled && window.speechSynthesis) {
+                setNextButtonEnabled(false);
+                playTTS(currentObj, isDeToEn);
+            } else {
+                setNextButtonEnabled(true);
+            }
+        }
+
+        function showFeedback(isCorrect, correctWord, example) {
+            const area = document.getElementById('feedback-area');
+            const title = document.getElementById('feedback-title');
+            const wordDisplay = document.getElementById('feedback-correct-word');
+            const exDisplay = document.getElementById('feedback-example');
+
+            area.classList.remove('hidden');
+            area.classList.add('border');
+            
+            if (isCorrect) {
+                area.classList.add('bg-green-50', 'border-green-200', 'text-green-800');
+                title.innerHTML = '<i class="fas fa-check-circle text-green-500"></i> Richtig!';
+            } else {
+                area.classList.add('bg-red-50', 'border-red-200', 'text-red-800');
+                title.innerHTML = '<i class="fas fa-times-circle text-red-500"></i> Nicht ganz.';
+            }
+
+            wordDisplay.innerText = `Lösung: ${correctWord}`;
+            exDisplay.innerText = example !== "Kein Beispielsatz vorhanden." ? `"${example}"` : '';
+            
+            // Focus next button
+            setTimeout(() => document.getElementById('btn-next').focus(), 100);
+        }
+
+        function nextQuestion() {
+            lesson.currentIndex++;
+            if (lesson.currentIndex >= lesson.words.length) {
+                finishLesson();
+            } else {
+                renderQuestion();
+            }
+        }
+
+        // --- Text to Speech Orchestrator ---
+        function playTTS(currentObj, isDeToEn) {
+            if (!window.speechSynthesis) {
+                setNextButtonEnabled(true);
+                return;
+            }
+
+            window.speechSynthesis.cancel(); // Vorherige Ausgabe abbrechen, um Queue neu zu starten
+            pendingSpeechUtterances = 0;
+
+            const queueSpeech = (text, lang) => {
+                if (!text) return;
+                pendingSpeechUtterances++;
+                speakWord(text, lang, false, () => {
+                    pendingSpeechUtterances = Math.max(0, pendingSpeechUtterances - 1);
+                    if (pendingSpeechUtterances === 0) {
+                        setNextButtonEnabled(true);
+                    }
+                });
+            };
+            
+            // Reihenfolge basierend auf Abfragerichtung
+            if (isDeToEn) {
+                queueSpeech(currentObj.de, 'de-DE');
+                queueSpeech(currentObj.en, 'en-US');
+            } else {
+                queueSpeech(currentObj.en, 'en-US');
+                queueSpeech(currentObj.de, 'de-DE');
+            }
+            
+            // Beispielsätze
+            if (currentObj.example && currentObj.example !== "Kein Beispielsatz vorhanden.") {
+                // Prüfen, ob der Satz zweisprachig (mit " / " getrennt) ist
+                if (currentObj.example.includes(' / ')) {
+                    const parts = currentObj.example.split(' / ');
+                    
+                    if (isDeToEn) {
+                        queueSpeech(parts[0], 'de-DE'); // Deutscher Beispielsatz
+                        queueSpeech(parts[1], 'en-US'); // Englischer Beispielsatz
+                    } else {
+                        // Bei Englisch -> Deutsch drehen wir auch die Beispielsätze um
+                        queueSpeech(parts[1], 'en-US'); // Englischer Beispielsatz
+                        queueSpeech(parts[0], 'de-DE'); // Deutscher Beispielsatz
+                    }
+                } else {
+                    // Falls kein Trenner da ist, nutzen wir sicherheitshalber die aktuelle Zielsprache
+                    const targetLang = isDeToEn ? 'en-US' : 'de-DE';
+                    queueSpeech(currentObj.example, targetLang);
+                }
+            }
+
+            if (pendingSpeechUtterances === 0) {
+                setNextButtonEnabled(true);
+            }
+        }
+
+        function speakWord(text, lang, cancelFirst = true, onDone = null) {
+            if(!window.speechSynthesis) return;
+            // Wenn cancelFirst false ist, wird der Text in die Warteschlange eingereiht
+            if (cancelFirst) window.speechSynthesis.cancel();
+            
+            const msg = new SpeechSynthesisUtterance();
+            msg.text = text;
+            msg.lang = lang; // 'de-DE' or 'en-US' / 'en-GB'
+            
+            // Try to find a natural voice if available
+            const voices = window.speechSynthesis.getVoices();
+            if(voices.length > 0) {
+                const voice = voices.find(v => v.lang.includes(lang) && (v.name.includes('Google') || v.name.includes('Natural')));
+                if(voice) msg.voice = voice;
+            }
+
+            msg.onend = () => {
+                if (typeof onDone === 'function') onDone();
+            };
+
+            msg.onerror = () => {
+                if (typeof onDone === 'function') onDone();
+            };
+
+            window.speechSynthesis.speak(msg);
+        }
+
+        // Load voices early
+        if(window.speechSynthesis) {
+            window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+        }
+
+        // --- Summary ---
+        function finishLesson() {
+            // Save History
+            history.push({
+                timestamp: Date.now(),
+                mode: lesson.mode,
+                score: lesson.score,
+                total: lesson.words.length
+            });
+            saveHistory();
+
+            // Update UI
+            document.getElementById('summary-score').innerText = lesson.score;
+            document.getElementById('summary-total').innerText = lesson.words.length;
+            
+            const mistakesList = document.getElementById('summary-mistakes');
+            const perfectMsg = document.getElementById('summary-perfect');
+            mistakesList.innerHTML = '';
+            
+            if (lesson.mistakes.length === 0) {
+                mistakesList.classList.add('hidden');
+                perfectMsg.classList.remove('hidden');
+            } else {
+                mistakesList.classList.remove('hidden');
+                perfectMsg.classList.add('hidden');
+                
+                lesson.mistakes.forEach(m => {
+                    const li = document.createElement('li');
+                    li.className = 'bg-gray-50 p-3 rounded border border-gray-200';
+                    const ask = m.direction === 'de-en' ? m.obj.de : m.obj.en;
+                    const correct = m.direction === 'de-en' ? m.obj.en : m.obj.de;
+                    
+                    li.innerHTML = `
+                        <div class="font-bold text-gray-800">${ask}</div>
+                        <div class="flex justify-between text-sm mt-1">
+                            <span class="text-red-500"><del>${m.given}</del></span>
+                            <span class="text-green-600 font-bold"><i class="fas fa-arrow-right"></i> ${correct}</span>
+                        </div>
+                    `;
+                    mistakesList.appendChild(li);
+                });
+            }
+
+            showView('summary');
+        }
+
+        // --- Start Application ---
+        window.onload = init;
+
+    </script>
+</body>
+</html>
